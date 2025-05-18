@@ -1,8 +1,0 @@
-fastapi
-uvicorn
-python-multipart
-pillow
-cryptography
-stegano
-python-dotenv
-transformers

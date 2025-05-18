@@ -1,97 +1,110 @@
-from fastapi import FastAPI, File, UploadFile, Form
+import os
+import io
+import secrets
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
-from pydantic import BaseModel
 from PIL import Image
-from io import BytesIO
-from cryptography.fernet import Fernet, InvalidToken
+from stegano import lsb
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
 import base64
+from transformers import pipeline
 
 app = FastAPI()
 
-# Helper functions
+# CORS for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-def generate_key(password: str) -> bytes:
-    # Derive a Fernet key from the password (simple, for demo; use PBKDF2HMAC for production)
-    return base64.urlsafe_b64encode(password.encode('utf-8').ljust(32, b'0'))
+# Load AI pipelines (NLP and image enhancement)
+nlp_summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+# Optionally, add more AI models for image enhancement or steganalysis
 
-def encrypt_message(message: str, key: str) -> bytes:
-    f = Fernet(generate_key(key))
-    return f.encrypt(message.encode('utf-8'))
+# Helper: Generate a strong hash key
+def generate_hash_key():
+    return secrets.token_urlsafe(32)
 
-def decrypt_message(token: bytes, key: str) -> str:
-    f = Fernet(generate_key(key))
-    return f.decrypt(token).decode('utf-8')
+# Helper: Derive a key from hash key
+def derive_key(hash_key: str, salt: bytes):
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100_000,
+        backend=default_backend()
+    )
+    return kdf.derive(hash_key.encode())
 
-def hide_message_in_image(image: Image.Image, message: bytes) -> Image.Image:
-    # Simple LSB steganography for demonstration
-    img = image.convert('RGB')
-    data = list(img.getdata())
-    message += b'<<END>>'
-    bits = ''.join([format(byte, '08b') for byte in message])
-    if len(bits) > len(data) * 3:
-        raise ValueError('Message too large for image!')
-    new_data = []
-    bit_idx = 0
-    for pixel in data:
-        r, g, b = pixel
-        if bit_idx < len(bits):
-            r = (r & ~1) | int(bits[bit_idx])
-            bit_idx += 1
-        if bit_idx < len(bits):
-            g = (g & ~1) | int(bits[bit_idx])
-            bit_idx += 1
-        if bit_idx < len(bits):
-            b = (b & ~1) | int(bits[bit_idx])
-            bit_idx += 1
-        new_data.append((r, g, b))
-    new_img = Image.new(img.mode, img.size)
-    new_img.putdata(new_data)
-    return new_img
-
-def extract_message_from_image(image: Image.Image) -> bytes:
-    img = image.convert('RGB')
-    data = list(img.getdata())
-    bits = ''
-    for pixel in data:
-        for color in pixel:
-            bits += str(color & 1)
-    bytes_list = [bits[i:i+8] for i in range(0, len(bits), 8)]
-    message_bytes = bytearray()
-    for byte in bytes_list:
-        b = int(byte, 2)
-        message_bytes.append(b)
-        if message_bytes[-7:] == b'<<END>>':
-            return bytes(message_bytes[:-7])
-    return bytes(message_bytes)
-
-@app.post('/encode')
-async def encode(
+@app.post("/api/embed")
+async def embed_message(
     image: UploadFile = File(...),
     message: str = Form(...),
-    key: str = Form(...)
+    summarize: bool = Form(False)
 ):
-    try:
-        img = Image.open(BytesIO(await image.read()))
-        encrypted = encrypt_message(message, key)
-        new_img = hide_message_in_image(img, encrypted)
-        buf = BytesIO()
-        new_img.save(buf, format='PNG')
-        buf.seek(0)
-        return StreamingResponse(buf, media_type='image/png')
-    except Exception as e:
-        return JSONResponse(status_code=400, content={'error': str(e)})
+    # Validate file type
+    if not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid image file.")
+    # Optionally summarize message with AI
+    if summarize and len(message) > 100:
+        try:
+            summary = nlp_summarizer(message, max_length=60, min_length=20, do_sample=False)
+            message = summary[0]['summary_text']
+        except Exception:
+            pass  # Fallback to original message if AI fails
+    # Read image
+    img_bytes = await image.read()
+    img = Image.open(io.BytesIO(img_bytes))
+    # Generate hash key and salt
+    hash_key = generate_hash_key()
+    salt = secrets.token_bytes(16)
+    # Encrypt message with derived key (simple XOR for demo, use strong encryption in prod)
+    key = derive_key(hash_key, salt)
+    enc_msg = base64.urlsafe_b64encode(bytes([b ^ key[i % len(key)] for i, b in enumerate(message.encode())]))
+    # Hide salt + encrypted message
+    payload = base64.urlsafe_b64encode(salt + enc_msg).decode()
+    secret_img = lsb.hide(img, payload)
+    # Save to buffer
+    buf = io.BytesIO()
+    secret_img.save(buf, format=img.format or "PNG")
+    buf.seek(0)
+    # Return image and hash key
+    return StreamingResponse(
+        buf,
+        media_type=image.content_type,
+        headers={
+            "Content-Disposition": f"attachment; filename=secret_{image.filename}",
+            "X-Hash-Key": hash_key
+        }
+    )
 
-@app.post('/decode')
-async def decode(
+@app.post("/api/extract")
+async def extract_message(
     image: UploadFile = File(...),
-    key: str = Form(...)
+    hash_key: str = Form(...)
 ):
+    if not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid image file.")
+    img_bytes = await image.read()
+    img = Image.open(io.BytesIO(img_bytes))
+    payload = lsb.reveal(img)
+    if not payload:
+        raise HTTPException(status_code=404, detail="No hidden message found.")
     try:
-        img = Image.open(BytesIO(await image.read()))
-        hidden = extract_message_from_image(img)
-        message = decrypt_message(hidden, key)
-        return {'message': message}
-    except InvalidToken:
-        return JSONResponse(status_code=400, content={'error': 'Invalid key or corrupted image.'})
-    except Exception as e:
-        return JSONResponse(status_code=400, content={'error': str(e)})
+        data = base64.urlsafe_b64decode(payload)
+        salt, enc_msg = data[:16], data[16:]
+        key = derive_key(hash_key, salt)
+        dec_msg = bytes([b ^ key[i % len(key)] for i, b in enumerate(base64.urlsafe_b64decode(enc_msg))]).decode()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Failed to decrypt message. Check your hash key.")
+    return JSONResponse({"message": dec_msg})
+
+@app.get("/")
+def root():
+    return {"status": "Secret Message API running"}
