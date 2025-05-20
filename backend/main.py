@@ -104,6 +104,7 @@ async def embed_message(
         try:
             # Example: Use HuggingFace Inference API (replace YOUR_API_KEY)
             api_url = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+            headers = {"Authorization": f"Bearer {os.getenv('', '')}"}
             payload = {"inputs": message, "parameters": {"max_length": 60, "min_length": 20, "do_sample": False}}
             resp = requests.post(api_url, headers=headers, json=payload, timeout=10)
             if resp.ok:
