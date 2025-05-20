@@ -51,7 +51,7 @@ export default function DecryptMessageForm() {
       formData.append("image", image);
       formData.append("hash_key", hashKey);
       formData.append("algorithm", algorithm);
-      const res = await fetch("https://animated-enigma-q7vvqxgvwg66hgv4-8000.app.github.dev/api/extract", {
+      const res = await fetch("https://secrat-messanger-1.onrender.com/api/extract", {
         method: "POST",
         body: formData,
       });
