@@ -45,7 +45,7 @@ app.state.limiter = limiter
 # Secure CORS for frontend integration
 app.add_middleware(
     StarletteCORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN ,"https://secrat-messanger.vercel.app/"],
+    allow_origins=["https://secrat-messanger.vercel.app"],
     allow_credentials=True,
     allow_methods=["POST", "GET"],
     allow_headers=["*"],
