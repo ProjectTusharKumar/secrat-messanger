@@ -7,3 +7,4 @@ stegano
 python-dotenv
 transformers
 slowapi
+pymongo
