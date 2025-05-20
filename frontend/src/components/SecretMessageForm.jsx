@@ -67,7 +67,7 @@ export default function SecretMessageForm() {
       formData.append("image", image);
       formData.append("message", message);
       formData.append("algorithm", algorithm);
-      const res = await fetch("https://animated-enigma-q7vvqxgvwg66hgv4-8000.app.github.dev/api/embed", {
+      const res = await fetch("https://secrat-messanger-1.onrender.com/api/embed", {
         method: "POST",
         body: formData,
       });
