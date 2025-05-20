@@ -6,3 +6,4 @@ cryptography
 stegano
 python-dotenv
 transformers
+slowapi
