@@ -36,7 +36,7 @@ app = FastAPI()
 load_dotenv()
 
 # CORS and frontend configuration
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://animated-enigma-q7vvqxgvwg66hgv4-5173.app.github.dev/")
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "")
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
