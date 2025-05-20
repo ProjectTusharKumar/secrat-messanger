@@ -2,13 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.6;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: #1e293b;
+  background-color: #f0fdfa;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -27,15 +27,23 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: linear-gradient(135deg, #e0e7ff 0%, #f0fdfa 100%);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  color: #2563eb;
 }
 
 button {
@@ -43,18 +51,99 @@ button {
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
-  font-weight: 500;
+  font-weight: 600;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background: linear-gradient(90deg, #2563eb 0%, #38bdf8 100%);
+  color: #fff;
   cursor: pointer;
-  transition: border-color 0.25s;
+  box-shadow: 0 2px 8px 0 #2563eb22;
+  transition: border-color 0.25s, background 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: #2563eb;
+  background: linear-gradient(90deg, #1d4ed8 0%, #0ea5e9 100%);
 }
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+input, textarea, select {
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  padding: 0.5em 0.8em;
+  font-size: 1em;
+  font-family: inherit;
+  background: #f8fafc;
+  color: #1e293b;
+  transition: border 0.2s;
+}
+input:focus, textarea:focus, select:focus {
+  border: 1.5px solid #2563eb;
+  outline: none;
+  background: #fff;
+}
+
+.card, .form-card, .max-w-md {
+  background: #fff;
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 24px 0 #2563eb11;
+  padding: 2em;
+  margin: 2em auto;
+  max-width: 420px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background: #e0e7ff;
+}
+::-webkit-scrollbar-thumb {
+  background: #a5b4fc;
+  border-radius: 8px;
+}
+
+header {
+  width: 100vw;
+  background: linear-gradient(90deg, #2563eb 0%, #38bdf8 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px 0 #2563eb22;
+  padding: 0.5em 0;
+  margin-bottom: 2em;
+}
+nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2em;
+}
+nav a {
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.5em 1.2em;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+}
+nav a.active, nav a:hover {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+@media (max-width: 600px) {
+  .card, .form-card, .max-w-md {
+    padding: 1em;
+    max-width: 98vw;
+  }
+  body {
+    padding: 0;
+  }
+  nav {
+    gap: 0.5em;
+  }
+  nav a {
+    padding: 0.5em 0.7em;
+    font-size: 0.95em;
+  }
 }
 
 @media (prefers-color-scheme: light) {
